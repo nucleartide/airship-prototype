@@ -43,6 +43,50 @@ function game_draw(g)
   print('hiii')
 end
 
+--
+-- tile entity.
+--
+
+function tile(x, y, w, h, c)
+  return {
+    bounds = bounds(x, y, w, h),
+    col = c,
+  }
+end
+
+function tile_update(t)
+  return t
+end
+
+function tile_draw(t)
+  rectfill(t.bounds.top_left.x, t.bounds.top_left.y, t.bounds.bottom_right.x, t.bounds.bottom_right.y, t.col)
+end
+
+--
+-- vec2 util.
+--
+
+function vec2(x, y)
+  return {
+    x = x,
+    y = y,
+  }
+end
+
+--
+-- bounds util.
+--
+
+function bounds(x, y, w, h)
+  local top_left     = vec2(x,     y)
+  local bottom_right = vec2(x+w-1, y+h-1)
+
+  return {
+    top_left     = top_left,
+    bottom_right = bottom_right,
+  }
+end
+
 --[[
 pset        :: io ()
 game_update :: btn_state -> game -> game
