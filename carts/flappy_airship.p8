@@ -1,13 +1,20 @@
 pico-8 cartridge // http://www.pico-8.com
 version 16
 __lua__
+-- https://itch.io/jam/retro-platformer-jam
+
+--[[
+
+  todo:
+
+    - [ ] parallax scrolling
+    - [ ] curried text functions
+
+]]
 
 --
 -- game loop.
 --
-
-function _init()
-end
 
 do
   local g
@@ -29,73 +36,30 @@ end
 -- game entity.
 --
 
+-- game :: game
 function game()
   return {
-    airship = airship(0, 0, 10, 9)
+    airship = airship()
   }
 end
 
+-- game_update :: game -> game
 function game_update(g)
   g.airship = airship_update(g.airship)
   return g
 end
 
+-- game_draw :: game -> io ()
 function game_draw(g)
   cls(13)
   airship_draw(g.airship)
-  -- todo: parallax scrolling
-end
-
---
--- tile entity.
---
-
-function airship(cel_x, cel_y, cel_x2, cel_y2)
-  local a  = {}
-  a.pos    = vec2()
-  a.cel_x  = cel_x
-  a.cel_y  = cel_y
-  a.cel_x2 = cel_x2
-  a.cel_y2 = cel_y2
-  return a
-end
-
--- cell to world coordinates
-function airship_bounds(a)
-  return a.cel_x*8, a.cel_y*8, (a.cel_x2+1)*8-1, (a.cel_y2+1)*8-1
-end
-
-function airship_update(a)
-  if btn(0) then
-    a.pos.x -= 0.2
-  end
-
-  if btn(1) then
-    a.pos.x += 0.2
-  end
-
-  if btn(2) then
-    a.pos.y -= 0.2
-  end
-
-  if btn(3) then
-    a.pos.y += 0.2
-  end
-
-  return a
-end
-
-function airship_draw(a)
-  -- map(a.cel_x, a.cel_y, a.pos.x, a.pos.y, a.cel_x2-a.cel_x+1, a.cel_y2-a.cel_y+1)
-
-  -- sx, sy, sw, sh
-  sspr(16, 0, 29, 20, a.pos.x, a.pos.y, 29*2, 20*2)
 end
 
 --
 -- vec2 util.
 --
 
+-- vec2 :: float -> float -> vec2
 function vec2(x, y)
   return {
     x = x or 0,
@@ -103,11 +67,69 @@ function vec2(x, y)
   }
 end
 
---[[
-playing with haskell type signatures:
-pset        :: io ()
-game_update :: btn_state -> game -> game
-]]
+-- vec2_print :: vec2 :: io ()
+function vec2_print(v)
+  print(v.x .. ', ' .. v.y)
+end
+
+-- vec2_add_to :: vec2 -> vec2 -> ?
+function vec2_add_to(a, b)
+  local ax, ay = a.x, a.y
+  local bx, by = b.x, b.y
+  b.x = ax + bx
+  b.y = ay + by
+end
+
+-- vec2_clamp :: vec2 -> vec2 -> vec2 -> ?
+function vec2_clamp_between(v, lower, upper)
+  local lx, ly = lower.x, lower.y
+  local vx, vy = v.x, v.y
+  local ux, uy = upper.x, upper.y
+  v.x = clamp_between(vx, lx, ux)
+  v.y = clamp_between(vy, ly, uy)
+end
+
+--
+-- clamp util.
+--
+
+-- clamp :: float -> float -> float -> float
+function clamp_between(n, lower, upper)
+  return min(max(lower, n), upper)
+end
+
+--
+-- airship entity.
+--
+
+-- airship :: airship
+function airship()
+  return {
+    pos     = vec2(),
+    vel     = vec2(),
+    acc     = vec2(0, .01),
+    max_vel = vec2(2, .25),
+    min_vel = vec2(-2, -2),
+
+    sx = 16,
+    sy = 0,
+    sw = 29,
+    sh = 20,
+  }
+end
+
+-- airship_update :: airship -> airship
+function airship_update(a)
+  vec2_add_to(a.acc, a.vel)
+  vec2_clamp_between(a.vel, a.min_vel, a.max_vel)
+  -- vec2_add_to(a.vel, a.pos)
+  return a
+end
+
+-- airship_draw :: airship -> io ()
+function airship_draw(a)
+  sspr(a.sx, a.sy, a.sw, a.sh, a.pos.x, a.pos.y, a.sw*2, a.sh*2)
+end
 __gfx__
 00000000eeeeeeee0000eeeeeeeeeeeeeeeeeeeee000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000eeeeeeee000e000000000000000000000e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000
