@@ -1,3 +1,7 @@
 # PICO-8 generated files.
 log.txt
 backup/
+
+# PICO-8 updates the "sessions" field every time you boot up PICO-8,
+# which is annoying.
+config.txt
