@@ -11,6 +11,7 @@ __lua__
     - [ ] curried text functions
     - [ ] enemies, since you are passing in `btn`
     - [ ] mass-based physics
+    - [ ] inertia, guy on twitter had this as a field
 
 ]]
 
@@ -20,21 +21,17 @@ __lua__
 
 do
   local g
-  local p
 
   function _init()
     g = game()
-    p = player()
   end
 
   function _update60()
     g = game_update(g)
-    p = player_update(btn, p)
   end
 
   function _draw()
     game_draw(g)
-    player_draw(p)
   end
 end
 
@@ -45,13 +42,15 @@ end
 -- game :: game
 function game()
   return {
-    airship = airship()
+    airship = airship(),
+    player  = player(),
   }
 end
 
 -- game_update :: game -> game
 function game_update(g)
   g.airship = airship_update(g.airship)
+  g.player  = player_update(btn, g.player)
   return g
 end
 
@@ -59,6 +58,19 @@ end
 function game_draw(g)
   cls(13)
   airship_draw(g.airship)
+  player_draw(g.player)
+
+  local p_bounds = player_bounds(g.player)
+  local a_bounds = airship_bounds(g.airship)
+
+  rect(p_bounds.top_left.x, p_bounds.top_left.y, p_bounds.bottom_right.x, p_bounds.bottom_right.y, 7)
+  rect(a_bounds.top_left.x, a_bounds.top_left.y, a_bounds.bottom_right.x, a_bounds.bottom_right.y, 7)
+
+  print(collides(player_bounds(g.player), airship_bounds(g.airship)))
+  vec2_print(p_bounds.top_left)
+  vec2_print(p_bounds.bottom_right)
+  vec2_print(a_bounds.top_left)
+  vec2_print(a_bounds.bottom_right)
 end
 
 --
@@ -73,7 +85,7 @@ function player()
     acc       = vec2(0, .1),
     move_vel  = 1,
     move_lerp = 0.4,
-    max_vel   = vec2(2, .25),
+    max_vel   = vec2(2, 2.5),
     min_vel   = vec2(-2, -2),
     w         = 3,
     h         = 4,
@@ -102,9 +114,17 @@ function player_update(btn_state, p)
   return p
 end
 
+-- player_bounds :: player -> bound
+function player_bounds(p)
+  return {
+    top_left     = p.pos,
+    bottom_right = vec2(p.pos.x + p.w, p.pos.y + p.h),
+  }
+end
+
 -- player_draw :: player -> io ()
 function player_draw(p)
-  rectfill(p.pos.x, p.pos.y, p.pos.x+p.w-1, p.pos.y+p.h-1, 7)
+  -- rectfill(p.pos.x, p.pos.y, p.pos.x+p.w-1, p.pos.y+p.h-1, 7)
 end
 
 --
@@ -169,6 +189,14 @@ function airship()
   }
 end
 
+-- airship_bounds :: airship -> bound
+function airship_bounds(a)
+  return {
+    top_left     = a.pos,
+    bottom_right = vec2(a.pos.x + a.sw, a.pos.y + a.sh),
+  }
+end
+
 -- airship_update :: airship -> airship
 function airship_update(a)
   vec2_add_to(a.acc, a.vel)
@@ -189,6 +217,29 @@ end
 -- lerp :: float -> float -> float -> float
 function lerp(a, b, t)
   return (1-t)*a + t*b
+end
+
+--
+-- aabb util.
+--
+
+--[[
+data bound =
+  bound
+    { top_left     :: vec2
+    , bottom_right :: vec2
+    }
+]]
+
+-- determine whether 2 bounding boxes collide.
+-- collides :: bound -> bound -> boolean
+function collides(a, b)
+  return not (false
+    or a.bottom_right.x < b.top_left.x
+    or a.top_left.x     > b.bottom_right.x
+    or a.bottom_right.y < b.top_left.y
+    or a.top_left.y     > b.bottom_right.y
+  )
 end
 __gfx__
 00000000eeeeeeee0000eeeeeeeeeeeeeeeeeeeee000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
