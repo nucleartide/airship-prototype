@@ -65,7 +65,8 @@ end
 -- game_update :: game -> game
 function game_update(g)
   g.airship = airship_update(g.airship)
-  g.player  = player_update(btn, g.player)
+  g.player = player_update(btn, g.player)
+  g.player = player_resolve_collision(g.player, g.airship)
   return g
 end
 
@@ -74,6 +75,7 @@ function game_draw(g)
   cls(13)
   airship_draw(g.airship)
   player_draw(g.player)
+  print(stat(1))
 end
 
 --
@@ -139,20 +141,27 @@ function player_bound(p)
   }
 end
 
--- player_resolve_collision :: player -> [bound] -> player
-function player_resolve_collision(p, bounds)
-  local p_bounds = player_bounds(p)
+-- player_resolve_collision :: player -> airship -> player
+function player_resolve_collision(p, airship)
+  local p_bounds = player_bound(p)
 
-  for i=1,#bounds do
+  for i=1,#airship.colliders do
     -- iteration var...
-    local collider = bounds[i]
+    local collider = airship.colliders[i]
+
+    -- convert to world space
+    local new_collider = {
+      top_left     = airship_to_world_space(airship, collider.top_left),
+      bottom_right = airship_to_world_space(airship, collider.bottom_right),
+    }
 
     -- is the player colliding with this collider?
-    local is_colliding, penetration_vec = collides(p_bounds, collider)
+    local is_colliding, penetration_vec = collides(p_bounds, new_collider)
 
     -- if so, resolve collision
     if is_colliding then
-      p.pos = vec2_sub_from(penetration_vec, p.pos)
+      p.pos   = vec2_sub_from(penetration_vec, p.pos)
+      p.vel.y = 0
     end
   end
 
@@ -218,57 +227,71 @@ end
 
 -- airship :: airship
 function airship()
-  return {
-    pos     = vec2(40, 50),
-    vel     = vec2(),
-    acc     = vec2(0, .01),
-    max_vel = vec2(2, .25),
-    min_vel = vec2(-2, -2),
+  local colliders = {
+    -- middle platform
+    {
+      top_left     = vec2(-2, 0),
+      bottom_right = vec2(2, 1),
+    },
 
-    colliders = {
-      -- middle platform
-      {
-        top_left     = vec2(-2, 0),
-        bottom_right = vec2(2, 1),
-      },
+    -- ceiling
+    {
+      top_left     = vec2(-4, -4),
+      bottom_right = vec2(4, -3),
+    },
 
-      -- ceiling
-      {
-        top_left     = vec2(-4, -4),
-        bottom_right = vec2(4, -3),
-      },
+    -- floor
+    {
+      top_left     = vec2(-4, 3),
+      bottom_right = vec2(4, 4),
+    },
 
-      -- floor
-      {
-        top_left     = vec2(-4, 3),
-        bottom_right = vec2(4, 4),
-      },
+    -- left wall
+    {
+      top_left     = vec2(-5, -3),
+      bottom_right = vec2(-4, 3),
+    },
 
-      -- left wall
-      {
-        top_left     = vec2(-5, -3),
-        bottom_right = vec2(-4, 3),
-      },
+    -- right wall
+    {
+      top_left     = vec2(4, -3),
+      bottom_right = vec2(5, 3),
+    },
 
-      -- right wall
-      {
-        top_left     = vec2(4, -3),
-        bottom_right = vec2(5, 3),
-      },
+    -- bottom left corner
+    {
+      top_left     = vec2(-5, 2),
+      bottom_right = vec2(-2, 3),
+    },
 
-      -- bottom left corner
-      {
-        top_left     = vec2(-5, 2),
-        bottom_right = vec2(-2, 3),
-      },
-
-      -- bottom right corner
-      {
-        top_left     = vec2(2, 2),
-        bottom_right = vec2(5, 3),
-      },
+    -- bottom right corner
+    {
+      top_left     = vec2(2, 2),
+      bottom_right = vec2(5, 3),
     },
   }
+
+  for i=1,#colliders do
+    vec2_scale_by(colliders[i].top_left,     5)
+    vec2_scale_by(colliders[i].bottom_right, 5)
+  end
+
+  return {
+    pos       = vec2(40, 50),
+    vel       = vec2(),
+    acc       = vec2(0, .01),
+    max_vel   = vec2(2, .25),
+    min_vel   = vec2(-2, -2),
+    colliders = colliders,
+  }
+end
+
+-- airship_to_world_space :: airship -> vec2 -> vec2
+function airship_to_world_space(a, v)
+  local new_vec = vec2()
+  vec2_add_to(a.pos, new_vec)
+  vec2_add_to(v,     new_vec)
+  return new_vec
 end
 
 -- airship_update :: airship -> airship
@@ -288,11 +311,11 @@ function airship_draw(a)
     local v2 = vec2()
 
     vec2_add_to(wall.top_left, v1)
-    vec2_scale_by(v1, 5)
+    -- vec2_scale_by(v1, 5)
     vec2_add_to(a.pos, v1)
 
     vec2_add_to(wall.bottom_right, v2)
-    vec2_scale_by(v2, 5)
+    -- vec2_scale_by(v2, 5)
     vec2_add_to(a.pos, v2)
 
     rectfill(
@@ -329,12 +352,12 @@ function minkowski_difference(a, b)
   return {
     top_left     = vec2(left,  top),
     bottom_right = vec2(right, bottom),
-  }
+  }, top, bottom, left, right
 end
 
 -- collides :: bound -> bound -> (bool, bound, vec2)
-function collides(a, b)
-  local diff = minkowski_difference(a, b)
+function collides(bound0, bound1)
+  local diff, t, b, l, r = minkowski_difference(bound0, bound1)
 
   -- if the minkowski difference intersects the origin,
   -- then a and b collide.
