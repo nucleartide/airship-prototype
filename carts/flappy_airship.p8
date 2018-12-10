@@ -75,7 +75,7 @@ function game_draw(g)
   cls(13)
   airship_draw(g.airship)
   player_draw(g.player)
-  print(stat(1))
+  -- print(stat(1))
 end
 
 --
