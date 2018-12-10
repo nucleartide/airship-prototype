@@ -5,6 +5,16 @@ __lua__
 -- by @nucleartide
 
 --[[
+
+  this post was particularly helpful:
+  http://spaderthomas.com/post/2018/08/25/minkowski/#collision-resolution
+
+]]
+
+-- enable mouse input.
+poke(0x5f2d, 1)
+
+--[[
 data bound =
   bound
     { top_left     :: vec2
@@ -22,20 +32,47 @@ function minkowski_difference(a, b)
   return {
     top_left     = vec2(left,  top),
     bottom_right = vec2(right, bottom),
-  }
+  }, top, bottom, left, right
 end
 
--- collides :: bound -> bound -> bool
+-- collides :: bound -> bound -> (bool, bound)
 function collides(a, b)
-  local diff = minkowski_difference(a, b)
+  local diff, t, b, l, r = minkowski_difference(a, b)
 
   -- if the minkowski difference intersects the origin,
   -- then a and b collide.
-  return true
+  local is_colliding = true
     and diff.top_left.x <= 0
     and diff.bottom_right.x >= 0
     and diff.top_left.y <= 0
     and diff.bottom_right.y >= 0
+
+  local penetration_vec = vec2(0, t)
+  local current_min     = abs(t)
+
+  -- note: better api: min({{abs(b), vec2(0, b)}, ...}, predicate)
+  -- what if two abs values are equal?
+  --   current impl chooses y when x and y are equal
+
+  if abs(b) < current_min then
+    current_min = abs(b)
+    penetration_vec.x = 0
+    penetration_vec.y = b
+  end
+
+  if abs(l) < current_min then
+    current_min = abs(l)
+    penetration_vec.x = l
+    penetration_vec.y = 0
+  end
+
+  if abs(r) < current_min then
+    current_min = abs(r)
+    penetration_vec.x = r
+    penetration_vec.y = 0
+  end
+
+  return is_colliding, diff, penetration_vec, t, b, l, r
 end
 
 function vec2(x, y)
@@ -88,6 +125,9 @@ do
   local p = player()
 
   local is_colliding = false
+  local diff_bounds
+  local penetration_vec
+  local t, b, l, r
 
   function _update60()
     -- update player
@@ -95,7 +135,13 @@ do
 
     -- update `is_colliding` status
     local p_bounds = player_bounds(p)
-    is_colliding = collides(p_bounds, collider)
+    is_colliding, diff_bounds, penetration_vec, t, b, l, r = collides(p_bounds, collider)
+
+    -- resolve collision.
+    if is_colliding then
+      p.pos.x -= penetration_vec.x
+      p.pos.y -= penetration_vec.y
+    end
   end
 
   function _draw()
@@ -108,7 +154,20 @@ do
       7
     )
     player_draw(p)
+    --[[
+    rectfill(
+      diff_bounds.top_left.x,
+      diff_bounds.top_left.y,
+      diff_bounds.bottom_right.x,
+      diff_bounds.bottom_right.y,
+      15
+    )
+    ]]
     print('collides: ' .. tostr(is_colliding), nil, nil, 7)
+    if is_colliding then
+      -- print('penetration vec: ' .. penetration_vec.x .. ', ' .. penetration_vec.y, 0, 6, 7)
+    end
+    -- print(t .. ', ' .. b .. ', ' .. l .. ', ' .. r, 0, 12, 7)
   end
 end
 __gfx__
