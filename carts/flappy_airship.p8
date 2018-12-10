@@ -64,7 +64,7 @@ function game_draw(g)
   local a_bounds = airship_bounds(g.airship)
 
   rect(p_bounds.top_left.x, p_bounds.top_left.y, p_bounds.bottom_right.x, p_bounds.bottom_right.y, 7)
-  rect(a_bounds.top_left.x, a_bounds.top_left.y, a_bounds.bottom_right.x, a_bounds.bottom_right.y, 7)
+  -- rect(a_bounds.top_left.x, a_bounds.top_left.y, a_bounds.bottom_right.x, a_bounds.bottom_right.y, 7)
 
   print(collides(player_bounds(g.player), airship_bounds(g.airship)))
   vec2_print(p_bounds.top_left)
@@ -152,6 +152,13 @@ function vec2_add_to(a, b)
   b.y = ay + by
 end
 
+-- vec2_mul_by :: vec2 -> float -> vec2
+function vec2_mul_by(v, s)
+  v.x *= s
+  v.y *= s
+  return v
+end
+
 -- vec2_clamp :: vec2 -> vec2 -> vec2 -> ?
 function vec2_clamp_between(v, lower, upper)
   local lx, ly = lower.x, lower.y
@@ -186,28 +193,68 @@ function airship()
     sy      = 0,
     sw      = 29,
     sh      = 20,
+
+    colliders = {
+      {
+        -- ceiling
+        top_left     = vec2_mul_by(vec2(1, 0), 5),
+        bottom_right = vec2_mul_by(vec2(9, 2), 5),
+      },
+      {
+        -- left wall
+        top_left     = vec2_mul_by(vec2(0, 1), 5),
+        bottom_right = vec2_mul_by(vec2(2, 7), 5),
+      },
+      {
+        -- right wall
+        top_left     = vec2_mul_by(vec2(8, 1), 5),
+        bottom_right = vec2_mul_by(vec2(10, 7), 5),
+      },
+      {
+        -- bottom wall
+        top_left     = vec2_mul_by(vec2(1, 6), 5),
+        bottom_right = vec2_mul_by(vec2(9, 8), 5),
+      },
+    },
   }
 end
 
--- airship_bounds :: airship -> bound
-function airship_bounds(a)
-  return {
-    top_left     = a.pos,
-    bottom_right = vec2(a.pos.x + a.sw, a.pos.y + a.sh),
-  }
+-- airship_to_world :: airship -> vec2
+function airship_to_world(a)
 end
 
 -- airship_update :: airship -> airship
 function airship_update(a)
   vec2_add_to(a.acc, a.vel)
   vec2_clamp_between(a.vel, a.min_vel, a.max_vel)
-  -- vec2_add_to(a.vel, a.pos)
+  vec2_add_to(a.vel, a.pos)
   return a
 end
 
 -- airship_draw :: airship -> io ()
 function airship_draw(a)
-  sspr(a.sx, a.sy, a.sw, a.sh, a.pos.x, a.pos.y, a.sw*2, a.sh*2)
+  -- sspr(a.sx, a.sy, a.sw, a.sh, a.pos.x, a.pos.y, a.sw*2, a.sh*2)
+
+  for i=1,#a.colliders do
+    local wall = a.colliders[i]
+
+    local v1 = vec2()
+    local v2 = vec2()
+
+    vec2_add_to(a.pos,         v1)
+    vec2_add_to(wall.top_left, v1)
+
+    vec2_add_to(a.pos,             v2)
+    vec2_add_to(wall.bottom_right, v2)
+
+    rect(
+      v1.x,
+      v1.y,
+      v2.x,
+      v2.y,
+      7
+    )
+  end
 end
 
 --
@@ -223,14 +270,6 @@ end
 -- aabb util.
 --
 
---[[
-data bound =
-  bound
-    { top_left     :: vec2
-    , bottom_right :: vec2
-    }
-]]
-
 -- determine whether 2 bounding boxes collide.
 -- collides :: bound -> bound -> boolean
 function collides(a, b)
@@ -240,6 +279,34 @@ function collides(a, b)
     or a.bottom_right.y < b.top_left.y
     or a.top_left.y     > b.bottom_right.y
   )
+end
+
+--
+-- collide_floor util.
+--
+
+function collide_floor(entity)
+end
+
+--
+-- test char.
+--
+
+function test_char()
+  return {
+    pos = vec2(), -- this should be at the center
+    vel = vec2(),
+    acc = vec2(),
+    w   = 16,
+    h   = 16,
+  }
+end
+
+function test_char_bounds(t)
+  return {
+    top_left     = vec2(t.pos.x-t.w/2, t.pos.y-t.h/2),
+    bottom_right = vec2(t.pos.x+t.w/2, t.pos.y+t.h/2),
+  }
 end
 __gfx__
 00000000eeeeeeee0000eeeeeeeeeeeeeeeeeeeee000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
