@@ -37,7 +37,7 @@ end
 
 -- collides :: bound -> bound -> (bool, bound)
 function collides(a, b)
-  local diff, t, b, l, r = minkowski_difference(a, b)
+  local diff = minkowski_difference(a, b)
 
   -- if the minkowski difference intersects the origin,
   -- then a and b collide.
@@ -72,7 +72,7 @@ function collides(a, b)
     penetration_vec.y = 0
   end
 
-  return is_colliding, diff, penetration_vec, t, b, l, r
+  return is_colliding, diff, penetration_vec
 end
 
 function vec2(x, y)
@@ -122,12 +122,60 @@ do
     bottom_right = vec2(80, 95),
   }
 
+  local collider2 = {
+    top_left     = vec2(75,  10),
+    bottom_right = vec2(100, 90),
+  }
+
+  local colliders = {
+    -- middle platform
+    {
+      top_left     = vec2(),
+      bottom_right = vec2(),
+    },
+
+    -- ceiling
+    {
+      top_left     = vec2(),
+      bottom_right = vec2(),
+    },
+
+    -- floor
+    {
+      top_left     = vec2(),
+      bottom_right = vec2(),
+    },
+
+    -- left wall
+    {
+      top_left     = vec2(),
+      bottom_right = vec2(),
+    },
+
+    -- right wall
+    {
+      top_left     = vec2(),
+      bottom_right = vec2(),
+    },
+
+    -- bottom left corner
+    {
+      top_left     = vec2(),
+      bottom_right = vec2(),
+    },
+
+    -- bottom right corner
+    {
+      top_left     = vec2(),
+      bottom_right = vec2(),
+    },
+  }
+
   local p = player()
 
   local is_colliding = false
   local diff_bounds
   local penetration_vec
-  local t, b, l, r
 
   function _update60()
     -- update player
@@ -135,9 +183,18 @@ do
 
     -- update `is_colliding` status
     local p_bounds = player_bounds(p)
-    is_colliding, diff_bounds, penetration_vec, t, b, l, r = collides(p_bounds, collider)
+    is_colliding, diff_bounds, penetration_vec = collides(p_bounds, collider)
 
     -- resolve collision.
+    if is_colliding then
+      p.pos.x -= penetration_vec.x
+      p.pos.y -= penetration_vec.y
+    end
+
+    -- update `is_colliding` status for 2nd collision
+    is_colliding, diff_bounds, penetration_vec = collides(p_bounds, collider2)
+
+    -- resolve collision
     if is_colliding then
       p.pos.x -= penetration_vec.x
       p.pos.y -= penetration_vec.y
@@ -153,21 +210,14 @@ do
       collider.bottom_right.y,
       7
     )
-    player_draw(p)
-    --[[
     rectfill(
-      diff_bounds.top_left.x,
-      diff_bounds.top_left.y,
-      diff_bounds.bottom_right.x,
-      diff_bounds.bottom_right.y,
-      15
+      collider2.top_left.x,
+      collider2.top_left.y,
+      collider2.bottom_right.x,
+      collider2.bottom_right.y,
+      7
     )
-    ]]
-    print('collides: ' .. tostr(is_colliding), nil, nil, 7)
-    if is_colliding then
-      -- print('penetration vec: ' .. penetration_vec.x .. ', ' .. penetration_vec.y, 0, 6, 7)
-    end
-    -- print(t .. ', ' .. b .. ', ' .. l .. ', ' .. r, 0, 12, 7)
+    player_draw(p)
   end
 end
 __gfx__

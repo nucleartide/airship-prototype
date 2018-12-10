@@ -7,11 +7,26 @@ __lua__
 
   todo:
 
+    ## nice-to-haves
+
     - [ ] parallax scrolling
     - [ ] curried text functions
     - [ ] enemies, since you are passing in `btn`
     - [ ] mass-based physics
     - [ ] inertia, guy on twitter had this as a field
+
+    ## todo right now:
+
+    - [x] revisit player
+    - [x] revisit airship
+    - [x] revisit bounds - everything should be centered
+    - [x] define colliders
+    - [ ] resolve collisions for all colliders
+
+    ## low priority
+
+    - [ ] visual representation for colliders
+      - [ ] draw one collider at a time
 
 ]]
 
@@ -59,18 +74,6 @@ function game_draw(g)
   cls(13)
   airship_draw(g.airship)
   player_draw(g.player)
-
-  local p_bounds = player_bounds(g.player)
-  local a_bounds = airship_bounds(g.airship)
-
-  rect(p_bounds.top_left.x, p_bounds.top_left.y, p_bounds.bottom_right.x, p_bounds.bottom_right.y, 7)
-  -- rect(a_bounds.top_left.x, a_bounds.top_left.y, a_bounds.bottom_right.x, a_bounds.bottom_right.y, 7)
-
-  print(collides(player_bounds(g.player), airship_bounds(g.airship)))
-  vec2_print(p_bounds.top_left)
-  vec2_print(p_bounds.bottom_right)
-  vec2_print(a_bounds.top_left)
-  vec2_print(a_bounds.bottom_right)
 end
 
 --
@@ -78,11 +81,12 @@ end
 --
 
 -- player :: player
+-- note: player origin is at top left.
 function player()
   return {
-    pos       = vec2(),
+    pos       = vec2(40, -10),
     vel       = vec2(),
-    acc       = vec2(0, .1),
+    acc       = vec2(0, 0.15),
     move_vel  = 1,
     move_lerp = 0.4,
     max_vel   = vec2(2, 2.5),
@@ -94,16 +98,16 @@ end
 
 -- player_update :: btn_state -> player -> player
 function player_update(btn_state, p)
-  local desired_vel =
+  p.acc.x =
     btn_state(0) and -p.move_vel or
     btn_state(1) and p.move_vel  or
     0
 
   -- update x-component of velocity
-  p.vel.x = lerp(p.vel.x, desired_vel, p.move_lerp)
+  p.vel.x = lerp(p.vel.x, p.acc.x, p.move_lerp)
 
   -- update y-component of velocity
-  vec2_add_to(p.acc, p.vel)
+  p.vel.y += p.acc.y
 
   -- clamp velocity
   vec2_clamp_between(p.vel, p.min_vel, p.max_vel)
@@ -114,17 +118,45 @@ function player_update(btn_state, p)
   return p
 end
 
--- player_bounds :: player -> bound
-function player_bounds(p)
+-- player_draw :: player -> io ()
+function player_draw(p)
+  rectfill(p.pos.x, p.pos.y, p.pos.x+p.w-1, p.pos.y+p.h-1, 7)
+end
+
+--[[
+data bound =
+  bound
+    { top_left     :: vec2
+    , bottom_right :: vec2
+    }
+]]
+
+-- player_bound :: player -> bound
+function player_bound(p)
   return {
-    top_left     = p.pos,
-    bottom_right = vec2(p.pos.x + p.w, p.pos.y + p.h),
+    top_left     = vec2(p.pos.x,       p.pos.y),
+    bottom_right = vec2(p.pos.x+p.w-1, p.pos.y+p.h-1),
   }
 end
 
--- player_draw :: player -> io ()
-function player_draw(p)
-  -- rectfill(p.pos.x, p.pos.y, p.pos.x+p.w-1, p.pos.y+p.h-1, 7)
+-- player_resolve_collision :: player -> [bound] -> player
+function player_resolve_collision(p, bounds)
+  local p_bounds = player_bounds(p)
+
+  for i=1,#bounds do
+    -- iteration var...
+    local collider = bounds[i]
+
+    -- is the player colliding with this collider?
+    local is_colliding, penetration_vec = collides(p_bounds, collider)
+
+    -- if so, resolve collision
+    if is_colliding then
+      p.pos = vec2_sub_from(penetration_vec, p.pos)
+    end
+  end
+
+  return p
 end
 
 --
@@ -144,37 +176,40 @@ function vec2_print(v)
   print(v.x .. ', ' .. v.y)
 end
 
--- vec2_add_to :: vec2 -> vec2 -> ?
+-- vec2_add_to :: vec2 -> vec2 -> vec2
 function vec2_add_to(a, b)
   local ax, ay = a.x, a.y
   local bx, by = b.x, b.y
   b.x = ax + bx
   b.y = ay + by
+  return b
+end
+
+-- vec2_sub_from :: vec2 -> vec2 -> vec2
+-- note: b is first arg.
+function vec2_sub_from(b, a)
+  local ax, ay = a.x, a.y
+  local bx, by = b.x, b.y
+  a.x = ax - bx
+  a.y = ay - by
+  return a
 end
 
 -- vec2_mul_by :: vec2 -> float -> vec2
-function vec2_mul_by(v, s)
+function vec2_scale_by(v, s)
   v.x *= s
   v.y *= s
   return v
 end
 
--- vec2_clamp :: vec2 -> vec2 -> vec2 -> ?
+-- vec2_clamp :: vec2 -> vec2 -> vec2 -> vec2
 function vec2_clamp_between(v, lower, upper)
   local lx, ly = lower.x, lower.y
   local vx, vy = v.x, v.y
   local ux, uy = upper.x, upper.y
-  v.x = clamp_between(vx, lx, ux)
-  v.y = clamp_between(vy, ly, uy)
-end
-
---
--- clamp util.
---
-
--- clamp :: float -> float -> float -> float
-function clamp_between(n, lower, upper)
-  return min(max(lower, n), upper)
+  v.x = clamp(lx, vx, ux)
+  v.y = clamp(ly, vy, uy)
+  return v
 end
 
 --
@@ -184,43 +219,56 @@ end
 -- airship :: airship
 function airship()
   return {
-    pos     = vec2(),
+    pos     = vec2(40, 50),
     vel     = vec2(),
     acc     = vec2(0, .01),
     max_vel = vec2(2, .25),
     min_vel = vec2(-2, -2),
-    sx      = 16,
-    sy      = 0,
-    sw      = 29,
-    sh      = 20,
 
     colliders = {
+      -- middle platform
       {
-        -- ceiling
-        top_left     = vec2_mul_by(vec2(1, 0), 5),
-        bottom_right = vec2_mul_by(vec2(9, 2), 5),
+        top_left     = vec2(-2, 0),
+        bottom_right = vec2(2, 1),
       },
+
+      -- ceiling
       {
-        -- left wall
-        top_left     = vec2_mul_by(vec2(0, 1), 5),
-        bottom_right = vec2_mul_by(vec2(2, 7), 5),
+        top_left     = vec2(-4, -4),
+        bottom_right = vec2(4, -3),
       },
+
+      -- floor
       {
-        -- right wall
-        top_left     = vec2_mul_by(vec2(8, 1), 5),
-        bottom_right = vec2_mul_by(vec2(10, 7), 5),
+        top_left     = vec2(-4, 3),
+        bottom_right = vec2(4, 4),
       },
+
+      -- left wall
       {
-        -- bottom wall
-        top_left     = vec2_mul_by(vec2(1, 6), 5),
-        bottom_right = vec2_mul_by(vec2(9, 8), 5),
+        top_left     = vec2(-5, -3),
+        bottom_right = vec2(-4, 3),
+      },
+
+      -- right wall
+      {
+        top_left     = vec2(4, -3),
+        bottom_right = vec2(5, 3),
+      },
+
+      -- bottom left corner
+      {
+        top_left     = vec2(-5, 2),
+        bottom_right = vec2(-2, 3),
+      },
+
+      -- bottom right corner
+      {
+        top_left     = vec2(2, 2),
+        bottom_right = vec2(5, 3),
       },
     },
   }
-end
-
--- airship_to_world :: airship -> vec2
-function airship_to_world(a)
 end
 
 -- airship_update :: airship -> airship
@@ -233,21 +281,21 @@ end
 
 -- airship_draw :: airship -> io ()
 function airship_draw(a)
-  -- sspr(a.sx, a.sy, a.sw, a.sh, a.pos.x, a.pos.y, a.sw*2, a.sh*2)
-
   for i=1,#a.colliders do
     local wall = a.colliders[i]
 
     local v1 = vec2()
     local v2 = vec2()
 
-    vec2_add_to(a.pos,         v1)
     vec2_add_to(wall.top_left, v1)
+    vec2_scale_by(v1, 5)
+    vec2_add_to(a.pos, v1)
 
-    vec2_add_to(a.pos,             v2)
     vec2_add_to(wall.bottom_right, v2)
+    vec2_scale_by(v2, 5)
+    vec2_add_to(a.pos, v2)
 
-    rect(
+    rectfill(
       v1.x,
       v1.y,
       v2.x,
@@ -258,7 +306,7 @@ function airship_draw(a)
 end
 
 --
--- lerp util.
+-- math utils.
 --
 
 -- lerp :: float -> float -> float -> float
@@ -266,47 +314,62 @@ function lerp(a, b, t)
   return (1-t)*a + t*b
 end
 
---
--- aabb util.
---
+-- clamp :: float -> float -> float -> float
+function clamp(lower, n, upper)
+  return min(max(lower, n), upper)
+end
 
--- determine whether 2 bounding boxes collide.
--- collides :: bound -> bound -> boolean
+-- minkowski_difference :: bound -> bound -> bound
+function minkowski_difference(a, b)
+  local top    = a.top_left.y     - b.bottom_right.y
+  local bottom = a.bottom_right.y - b.top_left.y
+  local left   = a.top_left.x     - b.bottom_right.x
+  local right  = a.bottom_right.x - b.top_left.x
+
+  return {
+    top_left     = vec2(left,  top),
+    bottom_right = vec2(right, bottom),
+  }
+end
+
+-- collides :: bound -> bound -> (bool, bound, vec2)
 function collides(a, b)
-  return not (false
-    or a.bottom_right.x < b.top_left.x
-    or a.top_left.x     > b.bottom_right.x
-    or a.bottom_right.y < b.top_left.y
-    or a.top_left.y     > b.bottom_right.y
-  )
-end
+  local diff = minkowski_difference(a, b)
 
---
--- collide_floor util.
---
+  -- if the minkowski difference intersects the origin,
+  -- then a and b collide.
+  local is_colliding = true
+    and diff.top_left.x <= 0
+    and diff.bottom_right.x >= 0
+    and diff.top_left.y <= 0
+    and diff.bottom_right.y >= 0
 
-function collide_floor(entity)
-end
+  local penetration_vec = vec2(0, t)
+  local current_min     = abs(t)
 
---
--- test char.
---
+  -- note: better api: min({{abs(b), vec2(0, b)}, ...}, predicate)
+  -- what if two abs values are equal?
+  --   current impl chooses y when x and y are equal
 
-function test_char()
-  return {
-    pos = vec2(), -- this should be at the center
-    vel = vec2(),
-    acc = vec2(),
-    w   = 16,
-    h   = 16,
-  }
-end
+  if abs(b) < current_min then
+    current_min = abs(b)
+    penetration_vec.x = 0
+    penetration_vec.y = b
+  end
 
-function test_char_bounds(t)
-  return {
-    top_left     = vec2(t.pos.x-t.w/2, t.pos.y-t.h/2),
-    bottom_right = vec2(t.pos.x+t.w/2, t.pos.y+t.h/2),
-  }
+  if abs(l) < current_min then
+    current_min = abs(l)
+    penetration_vec.x = l
+    penetration_vec.y = 0
+  end
+
+  if abs(r) < current_min then
+    current_min = abs(r)
+    penetration_vec.x = r
+    penetration_vec.y = 0
+  end
+
+  return is_colliding, penetration_vec, diff
 end
 __gfx__
 00000000eeeeeeee0000eeeeeeeeeeeeeeeeeeeee000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
