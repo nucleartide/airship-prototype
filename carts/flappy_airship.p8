@@ -106,29 +106,29 @@ function player_update(btn_state, p)
     0
 
   if btn(0) then
-    p.pos.x -= 1
+  --  p.pos.x -= 1
   end
   if btn(1) then
-    p.pos.x += 1
+   -- p.pos.x += 1
   end
   if btn(2) then
-    p.pos.y -= 1
+    --p.pos.y -= 1
   end
   if btn(3) then
-    p.pos.y += 1
+    --p.pos.y += 1
   end
 
   -- update x-component of velocity
-  --p.vel.x = lerp(p.vel.x, p.acc.x, p.move_lerp)
+  p.vel.x = lerp(p.vel.x, p.acc.x, p.move_lerp)
 
   -- update y-component of velocity
-  --p.vel.y += p.acc.y
+  p.vel.y += p.acc.y
 
   -- clamp velocity
   vec2_clamp_between(p.vel, p.min_vel, p.max_vel)
 
   -- update position
-  --vec2_add_to(p.vel, p.pos)
+  vec2_add_to(p.vel, p.pos)
 
   return p
 end
