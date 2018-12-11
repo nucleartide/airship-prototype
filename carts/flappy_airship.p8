@@ -105,24 +105,40 @@ function player_update(btn_state, p)
     btn_state(1) and p.move_vel  or
     0
 
+  if btn(0) then
+    p.pos.x -= 1
+  end
+  if btn(1) then
+    p.pos.x += 1
+  end
+  if btn(2) then
+    p.pos.y -= 1
+  end
+  if btn(3) then
+    p.pos.y += 1
+  end
+
   -- update x-component of velocity
-  p.vel.x = lerp(p.vel.x, p.acc.x, p.move_lerp)
+  --p.vel.x = lerp(p.vel.x, p.acc.x, p.move_lerp)
 
   -- update y-component of velocity
-  p.vel.y += p.acc.y
+  --p.vel.y += p.acc.y
 
   -- clamp velocity
   vec2_clamp_between(p.vel, p.min_vel, p.max_vel)
 
   -- update position
-  vec2_add_to(p.vel, p.pos)
+  --vec2_add_to(p.vel, p.pos)
 
   return p
 end
 
 -- player_draw :: player -> io ()
 function player_draw(p)
-  rectfill(p.pos.x, p.pos.y, p.pos.x+p.w-1, p.pos.y+p.h-1, 7)
+  rectfill(p.pos.x, p.pos.y, p.pos.x+p.w-1, p.pos.y+p.h-1, 8)
+  pset(p.pos.x, p.pos.y, 7)
+  pset(p.pos.x+p.w-1, p.pos.y+p.h-1, 7)
+  --vec2_print(p.penetration_vec)
 end
 
 --[[
@@ -141,11 +157,13 @@ function player_bound(p)
   }
 end
 
+-- todo: resolves colliders twice
+
 -- player_resolve_collision :: player -> airship -> player
 function player_resolve_collision(p, airship)
-  local p_bounds = player_bound(p)
 
   for i=1,#airship.colliders do
+    local p_bounds = player_bound(p)
     -- iteration var...
     local collider = airship.colliders[i]
 
@@ -161,7 +179,7 @@ function player_resolve_collision(p, airship)
     -- if so, resolve collision
     if is_colliding then
       p.pos   = vec2_sub_from(penetration_vec, p.pos)
-      p.vel.y = 0
+      --p.vel.y = 0
     end
   end
 
@@ -298,7 +316,7 @@ end
 function airship_update(a)
   vec2_add_to(a.acc, a.vel)
   vec2_clamp_between(a.vel, a.min_vel, a.max_vel)
-  vec2_add_to(a.vel, a.pos)
+  --vec2_add_to(a.vel, a.pos)
   return a
 end
 
@@ -323,8 +341,11 @@ function airship_draw(a)
       v1.y,
       v2.x,
       v2.y,
-      7
+      12
     )
+
+    pset(v1.x, v1.y, 9)
+    pset(v2.x, v2.y, 9)
   end
 end
 
@@ -344,10 +365,10 @@ end
 
 -- minkowski_difference :: bound -> bound -> bound
 function minkowski_difference(a, b)
-  local top    = a.top_left.y     - b.bottom_right.y
-  local bottom = a.bottom_right.y - b.top_left.y
-  local left   = a.top_left.x     - b.bottom_right.x
-  local right  = a.bottom_right.x - b.top_left.x
+  local top    = a.top_left.y     - b.bottom_right.y-1
+  local bottom = a.bottom_right.y - b.top_left.y+1
+  local left   = a.top_left.x     - b.bottom_right.x-1
+  local right  = a.bottom_right.x - b.top_left.x+1
 
   return {
     top_left     = vec2(left,  top),
@@ -362,17 +383,15 @@ function collides(bound0, bound1)
   -- if the minkowski difference intersects the origin,
   -- then a and b collide.
   local is_colliding = true
-    and diff.top_left.x <= 0
-    and diff.bottom_right.x >= 0
-    and diff.top_left.y <= 0
-    and diff.bottom_right.y >= 0
+    and diff.top_left.x < 0
+    and diff.bottom_right.x > 0
+    and diff.top_left.y < 0
+    and diff.bottom_right.y > 0
+
+    -- resolve vertical collision first
 
   local penetration_vec = vec2(0, t)
   local current_min     = abs(t)
-
-  -- note: better api: min({{abs(b), vec2(0, b)}, ...}, predicate)
-  -- what if two abs values are equal?
-  --   current impl chooses y when x and y are equal
 
   if abs(b) < current_min then
     current_min = abs(b)
