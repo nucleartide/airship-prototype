@@ -316,7 +316,7 @@ end
 function airship_update(a)
   vec2_add_to(a.acc, a.vel)
   vec2_clamp_between(a.vel, a.min_vel, a.max_vel)
-  --vec2_add_to(a.vel, a.pos)
+  vec2_add_to(a.vel, a.pos)
   return a
 end
 
