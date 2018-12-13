@@ -8,3 +8,7 @@ run:
 			-home $(shell pwd) \
 			-run $(shell pwd)/carts/flappy_airship.p8
 .PHONY: run
+
+# /Applications/PICO-8.app/Contents/MacOS/pico8
+# start from command line, don't use open
+# use printh

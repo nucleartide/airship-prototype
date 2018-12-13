@@ -14,6 +14,8 @@ __lua__
     - [ ] enemies, since you are passing in `btn`
     - [ ] mass-based physics
     - [ ] inertia, guy on twitter had this as a field
+    - [ ] animation type
+    - [ ] particle system
 
     ## todo right now:
 
