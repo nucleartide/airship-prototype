@@ -91,10 +91,10 @@ function player()
     pos       = vec2(40, -10),
     vel       = vec2(),
     acc       = vec2(0, 0.15),
-    move_vel  = 1,
-    move_lerp = 0.4,
-    max_vel   = vec2(2, 2.5),
-    min_vel   = vec2(-2, -2),
+    move_vel  = 0.05,
+    move_lerp = 0.8,
+    max_vel   = vec2(1, 2.5),
+    min_vel   = vec2(-1, -2),
     w         = 3,
     h         = 4,
   }
@@ -121,7 +121,11 @@ function player_update(btn_state, p)
   end
 
   -- update x-component of velocity
-  p.vel.x = lerp(p.vel.x, p.acc.x, p.move_lerp)
+  if btn_state(0) or btn_state(1) then
+    p.vel.x += p.acc.x
+  else
+    p.vel.x = lerp(p.vel.x, 0, p.move_lerp)
+  end
 
   -- update y-component of velocity
   p.vel.y += p.acc.y
