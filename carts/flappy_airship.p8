@@ -107,19 +107,6 @@ function player_update(btn_state, p)
     btn_state(1) and p.move_vel  or
     0
 
-  if btn(0) then
-  --  p.pos.x -= 1
-  end
-  if btn(1) then
-   -- p.pos.x += 1
-  end
-  if btn(2) then
-    --p.pos.y -= 1
-  end
-  if btn(3) then
-    --p.pos.y += 1
-  end
-
   -- update x-component of velocity
   if btn_state(0) or btn_state(1) then
     p.vel.x += p.acc.x
@@ -242,7 +229,6 @@ function vec2_clamp_between(v, lower, upper)
   local ux, uy = upper.x, upper.y
   v.x = clamp(lx, vx, ux)
   v.y = clamp(ly, vy, uy)
-  return v
 end
 
 --

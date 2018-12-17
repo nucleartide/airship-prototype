@@ -12,3 +12,8 @@ run:
 # /Applications/PICO-8.app/Contents/MacOS/pico8
 # start from command line, don't use open
 # use printh
+
+run2:
+	@/Applications/PICO-8.app/Contents/MacOS/pico8 \
+		-gif_scale 10 \
+		$(shell pwd)/carts/wafflejs.p8
