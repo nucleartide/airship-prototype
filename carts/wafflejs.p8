@@ -8,7 +8,7 @@ __lua__
 
   todo:
 
-    - [ ] player moving around
+    - [x] player moving around
 
 ]]
 
@@ -49,17 +49,20 @@ end
 
 function game()
   return {
-    player = player(),
+    player  = player(),
+    airship = airship(),
   }
 end
 
 function game_update(g)
   g.player = player_update(btn, g.player)
+  g.airship = airship_update(g.airship)
   return g
 end
 
 function game_draw(g)
   cls(1)
+  airship_draw(g.airship)
   player_draw(g.player)
 end
 
@@ -211,4 +214,92 @@ function bound(tlx, tly, brx, bry)
     top_left     = vec2(),
     bottom_right = vec2(),
   }
+end
+
+--
+-- airship entity.
+--
+
+function airship()
+  local colliders = {
+    -- middle platform
+    {
+      top_left     = vec2(-2, 0),
+      bottom_right = vec2(2, 1),
+    },
+
+    -- ceiling
+    {
+      top_left     = vec2(-4, -4),
+      bottom_right = vec2(4, -3),
+    },
+
+    -- floor
+    {
+      top_left     = vec2(-4, 3),
+      bottom_right = vec2(4, 4),
+    },
+
+    -- left wall
+    {
+      top_left     = vec2(-5, -3),
+      bottom_right = vec2(-4, 3),
+    },
+
+    -- right wall
+    {
+      top_left     = vec2(4, -3),
+      bottom_right = vec2(5, 3),
+    },
+
+    -- bottom left corner
+    {
+      top_left     = vec2(-5, 2),
+      bottom_right = vec2(-2, 3),
+    },
+
+    -- bottom right corner
+    {
+      top_left     = vec2(2, 2),
+      bottom_right = vec2(5, 3),
+    },
+  }
+
+  for i=1,#colliders do
+    vec2_scale_by(colliders[i].top_left,     5)
+    vec2_scale_by(colliders[i].bottom_right, 5)
+  end
+
+  return {
+    colliders = colliders,
+    pos = vec2(),
+  }
+end
+
+function airship_update(a)
+  return a
+end
+
+do
+  local v1 = vec2()
+  local v2 = vec2()
+
+  function airship_draw(a)
+    for i=1,#a.colliders do
+      vec2_zero(v1)
+      vec2_zero(v2)
+
+      local obstacle = a.colliders[i]
+
+      vec2_add_to(obstacle.top_left, v1)
+      vec2_add_to(a.pos,             v1)
+
+      vec2_add_to(obstacle.bottom_right, v2)
+      vec2_add_to(a.pos,                 v2)
+
+      rectfill(v1.x, v1.y, v2.x, v2.y, 12)
+      pset(v1.x, v1.y, 9)
+      pset(v2.x, v2.y, 9)
+    end
+  end
 end
