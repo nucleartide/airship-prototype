@@ -56,6 +56,10 @@ function vec2(x, y)
 end
 
 function vec2_print(v)
+  print(v.x .. ', ' .. v.y)
+end
+
+function vec2_printh(v)
   printh(v.x .. ', ' .. v.y)
 end
 
@@ -122,6 +126,8 @@ function game_draw(g)
   cls(1)
   airship_draw(g.airship)
   player_draw(g.player)
+  print(g.player.is_grounded)
+  vec2_print(g.player.vel)
 end
 
 --
@@ -143,6 +149,7 @@ function player()
     m             = mass,
     max_vel       = vec2(1, 2.5),
     is_grounded   = false,
+    jump_vel      = -1.75,
 
     -- note: don't use this,
     -- use `player_bounds()` so values get updated.
@@ -181,6 +188,11 @@ function player_update(btn_state, p)
   --
 
   p.vel.y += p.acc.y
+
+  if p.is_grounded and btn(5) then -- x button
+    -- jump.
+    p.vel.y = p.jump_vel
+  end
 
   --
   -- clamp velocity, update position.
@@ -240,7 +252,7 @@ do
       if is_colliding then
         vec2_sub_from(penetration_vec, p.pos)
         if penetration_vec.x ~= 0 then p.vel.x = 0 end
-        if penetration_vec.y ~= 0 then p.vel.y = 0 end
+        if penetration_vec.y ~= 0 and side == 'bottom' then p.vel.y = 0 end
         if side == 'bottom' then is_grounded = true end
       end
     end
