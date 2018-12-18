@@ -149,7 +149,7 @@ function player()
     m             = mass,
     max_vel       = vec2(1, 2.5),
     is_grounded   = false,
-    jump_vel      = -1.75,
+    jump_vel      = -.75,
 
     -- note: don't use this,
     -- use `player_bounds()` so values get updated.
