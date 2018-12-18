@@ -380,10 +380,10 @@ function collides(bound0, bound1)
     and diff.top_left.y < 0
     and diff.bottom_right.y > 0
 
-    -- resolve vertical collision first
-
-  local penetration_vec = vec2(0, t)
-  local current_min     = abs(t)
+  -- resolve vertical collision first
+  penetration_vec.x = 0
+  penetration_vec.y = t
+  local current_min = abs(t)
 
   if abs(b) < current_min then
     current_min = abs(b)
@@ -403,7 +403,7 @@ function collides(bound0, bound1)
     penetration_vec.y = 0
   end
 
-  return is_colliding, penetration_vec, diff
+  return is_colliding, diff
 end
 __gfx__
 00000000eeeeeeee0000eeeeeeeeeeeeeeeeeeeee000000000000000000000000000000000000000000000000000000000000000000000000000000000000000

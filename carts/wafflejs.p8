@@ -9,6 +9,7 @@ __lua__
   todo:
 
     - [x] player moving around
+    - [ ] chase a feeling
 
 ]]
 
@@ -41,93 +42,6 @@ do
   function _draw()
     game_draw(g)
   end
-end
-
---
--- game entity.
---
-
-function game()
-  return {
-    player  = player(),
-    airship = airship(),
-  }
-end
-
-function game_update(g)
-  g.player = player_update(btn, g.player)
-  g.airship = airship_update(g.airship)
-  return g
-end
-
-function game_draw(g)
-  cls(1)
-  airship_draw(g.airship)
-  player_draw(g.player)
-end
-
---
--- player entity.
---
-
-function player()
-  return {
-    pos       = vec2(64, 64),
-    vel       = vec2(),
-    acc       = vec2(),
-    move_vel  = 0.05,
-    move_lerp = 0.8,
-    w         = 2,
-    h         = 2,
-    m         = 80,
-    max_vel   = vec2(1, 2.5),
-    min_vel   = vec2(-1, -2.5),
-  }
-end
-
--- player_update :: btn_state -> player -> player
-function player_update(btn_state, p)
-
-  --
-  -- update x-component of velocity.
-  --
-
-  p.acc.x =
-    btn_state(0) and -p.move_vel or
-    btn_state(1) and p.move_vel  or
-    0
-
-  if p.acc.x ~= 0 then
-    -- the line below adds sliding when abruptly changing dir.
-    p.vel.x += p.acc.x
-  else
-    p.vel.x = lerp(p.vel.x, 0, p.move_lerp)
-  end
-
-  --
-  -- update y-component of velocity.
-  --
-
-  local acc = config.grav / p.m
-  -- printh('acc: ' .. acc)
-  -- p.vel.y += acc
-
-  --
-  -- clamp velocity, update position.
-  --
-
-  vec2_clamp_between(p.vel, p.min_vel, p.max_vel)
-  vec2_add_to(p.vel, p.pos)
-
-  --
-  -- return.
-  --
-
-  return p
-end
-
-function player_draw(p)
-  rectfill(p.pos.x, p.pos.y, p.pos.x+p.w-1, p.pos.y+p.h-1, 7)
 end
 
 --
@@ -178,6 +92,158 @@ function vec2_clamp_between(v, lower, upper)
   v.y = clamp(ly, vy, uy)
 end
 
+-- vec2_clamp_by :: vec2 -> vec2 -> void
+function vec2_clamp_by(v1, v2)
+  local v1x, v1y = v1.x, v1.y
+  local v2x, v2y = v2.x, v2.y
+  v1.x = clamp(-v2.x, v1.x, v2.x)
+  v1.y = clamp(-v2.y, v1.y, v2.y)
+end
+
+--
+-- game entity.
+--
+
+function game()
+  return {
+    player  = player(),
+    airship = airship(),
+  }
+end
+
+function game_update(g)
+  g.airship = airship_update(g.airship)
+  g.player = player_update(btn, g.player)
+  g.player = player_resolve_collision(g.player, g.airship)
+  return g
+end
+
+function game_draw(g)
+  cls(1)
+  airship_draw(g.airship)
+  player_draw(g.player)
+end
+
+--
+-- player entity.
+--
+
+function player()
+  local mass = 80
+
+  return {
+    pos       = vec2(64, 60),
+    vel       = vec2(),
+    acc       = vec2(0, config.grav / mass),
+    move_vel  = 0.05,
+    move_lerp = 0.8,
+    w         = 2,
+    h         = 2,
+    m         = mass,
+    max_vel   = vec2(1, 2.5),
+
+    -- note: don't use this,
+    -- use `player_bounds()` so values get updated.
+    bounds = {
+      top_left = vec2(),
+      bottom_right = vec2(),
+    },
+  }
+end
+
+-- player_update :: btn_state -> player -> player
+function player_update(btn_state, p)
+
+  --
+  -- update x-component of velocity.
+  --
+
+  p.acc.x =
+    btn_state(0) and -p.move_vel or
+    btn_state(1) and p.move_vel  or
+    0
+
+  if p.acc.x ~= 0 then
+    -- the line below adds sliding when abruptly changing dir.
+    p.vel.x += p.acc.x
+  else
+    p.vel.x = lerp(p.vel.x, 0, p.move_lerp)
+  end
+
+  --
+  -- update y-component of velocity.
+  --
+
+  p.vel.y += p.acc.y
+
+  --
+  -- clamp velocity, update position.
+  --
+
+  vec2_clamp_by(p.vel, p.max_vel)
+  vec2_add_to(p.vel, p.pos)
+
+  --
+  -- return.
+  --
+
+  return p
+end
+
+-- player_bounds :: player -> bound
+function player_bounds(p)
+  local bounds = p.bounds
+
+  bounds.top_left.x = p.pos.x
+  bounds.top_left.y = p.pos.y
+
+  bounds.bottom_right.x = p.pos.x+p.w-1
+  bounds.bottom_right.y = p.pos.y+p.h-1
+
+  return bounds
+end
+
+do
+  local world_space_collider = {
+    top_left     = vec2(),
+    bottom_right = vec2(),
+  }
+
+  local penetration_vec = vec2()
+
+  function player_resolve_collision(p, airship)
+    for i=1,#airship.colliders do
+      -- get some references.
+      local p_bounds = player_bounds(p)
+      local obstacle = airship.colliders[i]
+
+      -- convert to world space.
+      airship_to_world_space(airship, obstacle.top_left,     world_space_collider.top_left)
+      airship_to_world_space(airship, obstacle.bottom_right, world_space_collider.bottom_right)
+
+      -- is the player colliding with this collider?
+      local is_colliding = collides(
+        p_bounds,
+        world_space_collider,
+        penetration_vec
+      )
+
+      -- if so, resolve collision.
+      if is_colliding then
+        vec2_sub_from(penetration_vec, p.pos)
+        if penetration_vec.x ~= 0 then p.vel.x = 0 end
+        if penetration_vec.y ~= 0 then p.vel.y = 0 end
+      end
+    end
+
+    return p
+  end
+end
+
+function player_draw(p)
+  rectfill(p.pos.x, p.pos.y, p.pos.x+p.w-1, p.pos.y+p.h-1, 7)
+end
+
 --
 -- math utils.
 --
@@ -214,6 +280,44 @@ function bound(tlx, tly, brx, bry)
     top_left     = vec2(),
     bottom_right = vec2(),
   }
+end
+
+-- collides :: bound -> bound -> vec2 -> (bool, bound)
+function collides(bound0, bound1, penetration_vec)
+  local diff, t, b, l, r = minkowski_difference(bound0, bound1)
+
+  -- if the minkowski difference intersects the origin,
+  -- then a and b collide.
+  local is_colliding = true
+    and diff.top_left.x < 0
+    and diff.bottom_right.x > 0
+    and diff.top_left.y < 0
+    and diff.bottom_right.y > 0
+
+  -- resolve vertical collision first
+  penetration_vec.x = 0
+  penetration_vec.y = t
+  local current_min = abs(t)
+
+  if abs(b) < current_min then
+    current_min = abs(b)
+    penetration_vec.x = 0
+    penetration_vec.y = b
+  end
+
+  if abs(l) < current_min then
+    current_min = abs(l)
+    penetration_vec.x = l
+    penetration_vec.y = 0
+  end
+
+  if abs(r) < current_min then
+    current_min = abs(r)
+    penetration_vec.x = r
+    penetration_vec.y = 0
+  end
+
+  return is_colliding, diff
 end
 
 --
@@ -270,14 +374,35 @@ function airship()
     vec2_scale_by(colliders[i].bottom_right, 5)
   end
 
+  local mass = 800
+
   return {
     colliders = colliders,
-    pos = vec2(),
+    pos = vec2(64, 64),
+    vel = vec2(),
+    acc = vec2(0, config.grav / mass),
+    max_vel = vec2(2, .25),
   }
 end
 
 function airship_update(a)
+  -- update y-component of velocity.
+  vec2_add_to(a.acc, a.vel)
+
+  -- clamp velocity.
+  vec2_clamp_by(a.vel, a.max_vel)
+
+  -- update position.
+  vec2_add_to(a.vel, a.pos)
+
   return a
+end
+
+-- airship_to_world_space :: airship -> vec2 -> vec2 -> void
+function airship_to_world_space(a, vec_to_convert, out)
+  vec2_zero(out)
+  vec2_add_to(a.pos, out)
+  vec2_add_to(vec_to_convert, out)
 end
 
 do
