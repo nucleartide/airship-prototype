@@ -132,20 +132,22 @@ function player()
   local mass = 80
 
   return {
-    pos       = vec2(64, 60),
-    vel       = vec2(),
-    acc       = vec2(0, config.grav / mass),
-    move_vel  = 0.05,
-    move_lerp = 0.8,
-    w         = 2,
-    h         = 2,
-    m         = mass,
-    max_vel   = vec2(1, 2.5),
+    pos           = vec2(64, 60),
+    vel           = vec2(),
+    acc           = vec2(0, config.grav / mass),
+    move_vel      = 0.05,
+    move_lerp     = 0.8,
+    move_lerp_air = 1,
+    w             = 2,
+    h             = 2,
+    m             = mass,
+    max_vel       = vec2(1, 2.5),
+    is_grounded   = false,
 
     -- note: don't use this,
     -- use `player_bounds()` so values get updated.
     bounds = {
-      top_left = vec2(),
+      top_left     = vec2(),
       bottom_right = vec2(),
     },
   }
@@ -166,8 +168,12 @@ function player_update(btn_state, p)
   if p.acc.x ~= 0 then
     -- the line below adds sliding when abruptly changing dir.
     p.vel.x += p.acc.x
-  else
+  elseif p.is_grounded then
+    -- decelerate when grounded.
     p.vel.x = lerp(p.vel.x, 0, p.move_lerp)
+  else
+    -- decelerate when in-air.
+    p.vel.x = lerp(p.vel.x, 0, p.move_lerp_air)
   end
 
   --
@@ -212,6 +218,8 @@ do
   local penetration_vec = vec2()
 
   function player_resolve_collision(p, airship)
+    local is_grounded = false
+
     for i=1,#airship.colliders do
       -- get some references.
       local p_bounds = player_bounds(p)
@@ -222,7 +230,7 @@ do
       airship_to_world_space(airship, obstacle.bottom_right, world_space_collider.bottom_right)
 
       -- is the player colliding with this collider?
-      local is_colliding = collides(
+      local is_colliding, side = collides(
         p_bounds,
         world_space_collider,
         penetration_vec
@@ -233,8 +241,12 @@ do
         vec2_sub_from(penetration_vec, p.pos)
         if penetration_vec.x ~= 0 then p.vel.x = 0 end
         if penetration_vec.y ~= 0 then p.vel.y = 0 end
+        if side == 'bottom' then is_grounded = true end
       end
     end
+
+    -- update player's `is_grounded` state.
+    p.is_grounded = is_grounded
 
     return p
   end
@@ -282,7 +294,7 @@ function bound(tlx, tly, brx, bry)
   }
 end
 
--- collides :: bound -> bound -> vec2 -> (bool, bound)
+-- collides :: bound -> bound -> vec2 -> (bool, label, bound)
 function collides(bound0, bound1, penetration_vec)
   local diff, t, b, l, r = minkowski_difference(bound0, bound1)
 
@@ -298,26 +310,30 @@ function collides(bound0, bound1, penetration_vec)
   penetration_vec.x = 0
   penetration_vec.y = t
   local current_min = abs(t)
+  local label = 'top'
 
   if abs(b) < current_min then
     current_min = abs(b)
+    label = 'bottom'
     penetration_vec.x = 0
     penetration_vec.y = b
   end
 
   if abs(l) < current_min then
     current_min = abs(l)
+    label = 'left'
     penetration_vec.x = l
     penetration_vec.y = 0
   end
 
   if abs(r) < current_min then
     current_min = abs(r)
+    label = 'right'
     penetration_vec.x = r
     penetration_vec.y = 0
   end
 
-  return is_colliding, diff
+  return is_colliding, label, diff
 end
 
 --

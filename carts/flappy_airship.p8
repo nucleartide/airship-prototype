@@ -131,7 +131,6 @@ function player_draw(p)
   rectfill(p.pos.x, p.pos.y, p.pos.x+p.w-1, p.pos.y+p.h-1, 8)
   pset(p.pos.x, p.pos.y, 7)
   pset(p.pos.x+p.w-1, p.pos.y+p.h-1, 7)
-  --vec2_print(p.penetration_vec)
 end
 
 --[[
