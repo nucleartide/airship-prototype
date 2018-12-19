@@ -9,7 +9,21 @@ __lua__
   todo:
 
     - [x] player moving around
-    - [ ] chase a feeling
+    - [ ] feeling: safe, enclosed space
+      -   pure imagination (maybe for the music)
+      *** matrix
+      *** submarine
+      -   propeller
+      -   pipes
+      -   shoot
+
+    - air?
+    - water?
+    - space?
+
+    - move forward
+    - move backward
+    - rotate
 
 ]]
 
@@ -126,8 +140,8 @@ function game_draw(g)
   cls(1)
   airship_draw(g.airship)
   player_draw(g.player)
-  print(g.player.is_grounded)
-  vec2_print(g.player.vel)
+  -- print(g.player.is_grounded)
+  -- vec2_print(g.player.vel)
 end
 
 --
