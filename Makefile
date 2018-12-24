@@ -16,4 +16,4 @@ run:
 run2:
 	@/Applications/PICO-8.app/Contents/MacOS/pico8 \
 		-gif_scale 10 \
-		$(shell pwd)/carts/wafflejs.p8
+		$(shell pwd)/carts/game_state.p8
