@@ -10,6 +10,7 @@ function fsm(o)
 end
 
 function _init()
+  extcmd('rec')
   fsm {
     splash
   }
@@ -90,11 +91,16 @@ end
 game_over = {}
 
 function game_over.init()
-  return {}
+  return {
+    t  = 0,
+    tt = 2 * 60,
+  }
 end
 
 function game_over.update(g, transition)
   if btn(4) then transition(game) end
+  g.t += 1
+  if g.t == g.tt then extcmd('video') end
 end
 
 function game_over.draw(g)
