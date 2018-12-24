@@ -1,6 +1,13 @@
 pico-8 cartridge // http://www.pico-8.com
 version 16
 __lua__
+--[[
+
+  - pass information to next state
+  - persistence
+
+]]
+
 function fsm(o)
   assert(o ~= nil and o[1] ~= nil, 'must init fsm.')
   local cur, inst = o[1], o[1].init()
