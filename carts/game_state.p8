@@ -10,10 +10,10 @@ __lua__
 
 function fsm(o)
   assert(o ~= nil and o[1] ~= nil, 'must init fsm.')
-  local cur, inst = o[1], o[1].init()
-  local function transition(next) cur, inst = next, next.init() end
-  function _update60() cur.update(inst, transition) end
-  function _draw() cur.draw(inst) end
+  local c, i = o[1], o[1].init()
+  local function t(n) c, i = n, n.init() end
+  function _update60() c.update(i, t) end
+  function _draw() c.draw(i) end
 end
 
 function _init()
