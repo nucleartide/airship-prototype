@@ -1,31 +1,12 @@
 pico-8 cartridge // http://www.pico-8.com
 version 16
 __lua__
--- wafflejs
--- by @nucleartide
 
 --[[
 
-  todo:
+  top priority: working prototype
+  core: feeling of safety within an enclosed space
 
-    - [x] player moving around
-    - [ ] feeling: safe, enclosed space
-      -   pure imagination (maybe for the music)
-      *** matrix
-      *** submarine
-      -   propeller
-      -   pipes
-      -   shoot
-
-    - air?
-    - water?
-    - space?
-
-    - move forward
-    - move backward
-    - rotate
-
-    - feeling of safety within an enclosed space
     - light
     - energy
     - we're running out of energy, and need to escape
@@ -45,23 +26,45 @@ config = {
 }
 
 --
--- game loop.
+-- init state machine.
 --
 
-do
-  local g
+function fsm(s)
+  assert(s ~= nil, 'must init fsm.')
+  local c, i = s, s.init()
+  local function t(n) c, i = n, n.init() end
+  function _update60() c.update(i, t) end
+  function _draw() c.draw(i) end
+end
 
-  function _init()
-    g = game()
-  end
+function _init()
+  fsm(game)
+end
 
-  function _update60()
-    g = game_update(g)
-  end
+--
+-- game state.
+--
 
-  function _draw()
-    game_draw(g)
-  end
+game = {}
+
+function game.init()
+  return {
+    player  = player(),
+    airship = airship(),
+  }
+end
+
+function game.update(g)
+  airship_update(g.airship)
+  player_update(btn, g.player)
+  player_resolve_collision(g.player, g.airship)
+end
+
+function game.draw(g)
+  cls(0)
+  circfill(64, 64, 50, 1)
+  airship_draw(g.airship)
+  player_draw(g.player)
 end
 
 --
@@ -125,32 +128,6 @@ function vec2_clamp_by(v1, v2)
 end
 
 --
--- game entity.
---
-
-function game()
-  return {
-    player  = player(),
-    airship = airship(),
-  }
-end
-
-function game_update(g)
-  g.airship = airship_update(g.airship)
-  g.player = player_update(btn, g.player)
-  g.player = player_resolve_collision(g.player, g.airship)
-  return g
-end
-
-function game_draw(g)
-  cls(1)
-  airship_draw(g.airship)
-  player_draw(g.player)
-  -- print(g.player.is_grounded)
-  -- vec2_print(g.player.vel)
-end
-
---
 -- player entity.
 --
 
@@ -167,7 +144,7 @@ function player()
     w             = 2,
     h             = 2,
     m             = mass,
-    max_vel       = vec2(1, 2.5),
+    max_vel       = vec2(0.5, 2.5),
     is_grounded   = false,
     jump_vel      = -.75,
 
@@ -220,12 +197,6 @@ function player_update(btn_state, p)
 
   vec2_clamp_by(p.vel, p.max_vel)
   vec2_add_to(p.vel, p.pos)
-
-  --
-  -- return.
-  --
-
-  return p
 end
 
 -- player_bounds :: player -> bound
@@ -435,7 +406,7 @@ end
 
 function airship_update(a)
   -- update y-component of velocity.
-  vec2_add_to(a.acc, a.vel)
+  -- vec2_add_to(a.acc, a.vel)
 
   -- clamp velocity.
   vec2_clamp_by(a.vel, a.max_vel)
