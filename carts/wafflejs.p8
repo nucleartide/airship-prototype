@@ -25,6 +25,12 @@ __lua__
     - move backward
     - rotate
 
+    - feeling of safety within an enclosed space
+    - light
+    - energy
+    - we're running out of energy, and need to escape
+    - ship navigation
+
 ]]
 
 printh('')
