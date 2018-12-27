@@ -11,6 +11,7 @@ __lua__
     - energy
     - we're running out of energy, and need to escape
     - ship navigation
+    - move ship state
 
 ]]
 
@@ -131,6 +132,11 @@ end
 -- player entity.
 --
 
+local player_state = {
+  normal    = 0,
+  move_ship = 1,
+}
+
 function player()
   local mass = 80
 
@@ -154,6 +160,12 @@ function player()
       top_left     = vec2(),
       bottom_right = vec2(),
     },
+
+    player_state = player_state.move_ship,
+
+    -- stored as angle
+    propeller = 0.25,
+    desired_propel_angle = 0.25,
   }
 end
 
@@ -168,6 +180,11 @@ function player_update(btn_state, p)
     btn_state(0) and -p.move_vel or
     btn_state(1) and p.move_vel  or
     0
+
+  -- overwrite depending on state.
+  if p.player_state ~= player_state.normal then
+    p.acc.x = 0
+  end
 
   if p.acc.x ~= 0 then
     -- the line below adds sliding when abruptly changing dir.
@@ -197,6 +214,56 @@ function player_update(btn_state, p)
 
   vec2_clamp_by(p.vel, p.max_vel)
   vec2_add_to(p.vel, p.pos)
+
+  --
+  -- if in move ship state, update propeller angle
+  --
+  -- shouldn't be tied to the player's position...
+  --
+
+  local desired_x, desired_y = 0, 0
+  if p.player_state == player_state.move_ship then
+
+    if btn(0) and not btn(1) then
+      desired_x = -1
+    elseif not btn(0) and btn(1) then
+      desired_x = 1
+    end
+
+    if btn(2) and not btn(3) then
+      desired_y = -1
+    elseif not btn(2) and btn(3) then
+      desired_y = 1
+    end
+
+    if desired_x == 0 and desired_y == 0 then
+      p.desired_propel_angle = p.propeller
+    else
+      p.desired_propel_angle = atan2(desired_x, desired_y)
+    end
+  end
+
+  --
+  -- update p.propeller angle.
+  --
+
+  if desired_x ~= 0 or desired_y ~= 0 then
+    local negate = p.desired_propel_angle - 1
+    local positive = p.desired_propel_angle + 1
+
+    if abs(negate - p.propeller) < abs(p.desired_propel_angle - p.propeller) then
+      p.propeller = lerp(p.propeller, negate, 0.1)
+      p.propeller = p.propeller % 1
+    elseif abs(positive - p.propeller) < abs(p.desired_propel_angle - p.propeller) then
+      p.propeller = lerp(p.propeller, positive, 0.1)
+      p.propeller = p.propeller % 1
+    else
+      p.propeller = lerp(p.propeller, p.desired_propel_angle, 0.1)
+    end
+    if abs(p.propeller-p.desired_propel_angle)<0.001 then
+      p.propeller = p.desired_propel_angle
+    end
+  end
 end
 
 -- player_bounds :: player -> bound
@@ -257,6 +324,13 @@ end
 
 function player_draw(p)
   rectfill(p.pos.x, p.pos.y, p.pos.x+p.w-1, p.pos.y+p.h-1, 7)
+
+  local x=p.pos.x+cos(p.propeller)*30
+  local y=p.pos.y+sin(p.propeller)*30
+  rectfill(x,y,x+5,y+5,7)
+
+  print(p.propeller)
+  print(p.desired_propel_angle)
 end
 
 --
