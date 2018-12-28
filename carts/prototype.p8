@@ -12,6 +12,7 @@ __lua__
     - we're running out of energy, and need to escape
     - ship navigation
     - move ship state
+    - trigger collider
 
 ]]
 
