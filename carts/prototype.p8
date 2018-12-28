@@ -1,21 +1,6 @@
 pico-8 cartridge // http://www.pico-8.com
 version 16
 __lua__
-
---[[
-
-  top priority: working prototype
-  core: feeling of safety within an enclosed space
-
-    - light
-    - energy
-    - we're running out of energy, and need to escape
-    - ship navigation
-    - move ship state
-    - trigger collider
-
-]]
-
 printh('')
 printh('game start!')
 
