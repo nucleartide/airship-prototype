@@ -115,6 +115,22 @@ function vec2_clamp_by(v1, v2)
 end
 
 --
+-- angle lerp util.
+--
+
+function angle_lerp(a, b, t)
+  local diff = abs(a-b)
+  if diff > 0.5 then
+    if a > b then
+      a -= 1
+    else
+      b -= 1
+    end
+  end
+  return lerp(a, b, t) % 1
+end
+
+--
 -- player entity.
 --
 
